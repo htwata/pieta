@@ -1,0 +1,39 @@
+title: Pieta
+subtitle: this is joke .
+author: Francise Doom
+twitter:
+  username: nope.
+disqus: YOUR_DISQUS_SHORTNAME
+color: deepskyblue # web color
+branch: master # where your github pages hosted branch
+
+permalink: /items/:title
+search_engine: https://www.google.com/search
+paginate: 5
+paginate_path: "/page/:num"
+jekyll-mentions: https://twitter.com
+feed:
+  path: /atom.xml
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+gems:
+  - jekyll-avatar
+  - jekyll-paginate
+  - jekyll-seo-tag
+  - jekyll-mentions
+  - jekyll-sitemap
+  - jemoji
+  - jekyll-feed
+  # Add more you want
+markdown: kramdown
+kramdown:
+  auto_ids:       true
+  entity_output:  as_char
+  toc_levels:     1..6
+  smart_quotes:   lsquo,rsquo,ldquo,rdquo
+  input:          GFM
+  hard_wrap:      true
+  footnote_nr:    1
+

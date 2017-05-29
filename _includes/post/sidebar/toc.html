@@ -1,0 +1,23 @@
+<nav id="toc" class="toc"></nav>
+<script>
+$(function() {
+  var toc = $('#toc')
+  tocbot.init({
+    tocSelector: '#toc',
+    contentSelector: 'main article',
+    headingSelector: 'h1, h2, h3',
+  });
+  if (window.matchMedia("only screen and (max-width: 768px)").matches) {
+    return;
+  }
+  var offset = toc.offset();
+  toc.width(toc.width());
+  $(window).scroll(function () {
+    if($(window).scrollTop() > offset.top) {
+      toc.addClass('fixed');
+    } else {
+      toc.removeClass('fixed');
+    }
+  });
+});
+</script>
