@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Theme preview"
+title:  "[Swift3.0.2][Xcode][delegate]デリゲートの使い方サンプル"
 date:   2017-05-10 20:01:14 +0900
 tags: ios swift xcode delegate
 permalink: /swift/xcode/delegate
