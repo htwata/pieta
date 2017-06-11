@@ -1,0 +1,13 @@
+---
+layout: post
+title:  "Theme preview 3"
+date:   2017-05-10 20:01:14 +0900
+tags: jekyll test
+permalink: /test23
+---
+# Hello Jekyll!
+
+Jekyll also offers powerful support for code snippets:
+
+{% highlight ruby %}
+{% endhighlight %}
