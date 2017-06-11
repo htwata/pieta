@@ -50,7 +50,6 @@ class GADCustomBannerView {
     }
     
     
-    
 }
 
 //使用例(個別のViewContollerに拡張する必要がある)
@@ -83,6 +82,7 @@ extension ViewController: GADBannerViewDelegate {
         }
     }
 }
+
 {% endhighlight % }
 
 #### インタースティシャル
