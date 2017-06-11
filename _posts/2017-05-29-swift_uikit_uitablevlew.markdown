@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "UITableViewの備忘録(Custom Cell, filtering)"
+title:  "UITableViewの備忘録(Custom Cell,セルの編集・削除・入れ替え・クリック時の処理, filtering)"
 date:   2017-05-10 20:01:14 +0900
 tags: ios swift xcode uikit uitableview
 permalink: /ios/swift/xcode/uikit/uitableview
