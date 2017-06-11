@@ -2,7 +2,7 @@
 layout: post
 title:  "UICollectionViewの備忘録(Custom Cell, セル選択時にカラーマスク)"
 date:   2017-05-10 20:01:14 +0900
-tags: ios swift xcode uikit uitableview
+tags: ios swift xcode uikit uicollectionview
 permalink: /ios/swift/xcode/uikit/uicollectionview
 
 ---
