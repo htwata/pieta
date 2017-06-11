@@ -33,8 +33,8 @@ class GADCustomBannerView {
         let bannerView = GADBannerView(adSize:kGADAdSizeBanner)
         // AdMobで発行された広告ユニットIDを設定(Easy Playlist for Youtube)
       
-        bannerView.adUnitID = "ca-app-pub-3073356833616528/2309536298"
- 
+        bannerView.adUnitID = "ca-app-pub-XXXXXXXXXXXXXX"
+
         return bannerView
     }
     
