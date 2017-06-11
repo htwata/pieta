@@ -9,558 +9,223 @@ permalink: /ios/swift/xcode/uikit/uicollectionview
 ```
 Swift3.0.2 Xcode 8.2
 ```
+ここではUICollectionViewクラスの基本的な使用法をまとめる
 
-ここではStoryBoardとカスタムCellを用いて、
-UITableViewを作成する。
+セットアップ方法(UITableViewとほとんど同じ手順)
 
-カスタムCellとUITableViewクラスの関連付け
-UITableViewプロトコルで用意されている関数などの
-基本的な内容をまとめる
+```
+1 XibによるCustomCellの作成と関連づけ(StoryBoard)
+2 CollectionViewのレイアウト作成(StoryBoard)
+3 Cellの初期化
+4 ViewControllerをUICollectionViewDataSourceクラスのサブクラス化(専用extensionの作成)
 
-# UITableViewの基本的な作成方法(StoryBoard, Custom Cell使用)
+1 XibによるCustomCellの作成と関連づけ(StoryBoard)
+New -> File -> Cocoa Touch ClassからカスタムCell用のXibファイルを作成する
+(Also create XIB Fileにもチェックを入れる)
+```
 
-## CustomViewCell.swiftの準備
+# セルタップ時にセルにカラーマスクを適応させる
 
-新規ファイル作成から*Cocoa Touch Class*で
-"Subclass of "項目から*UITableViewCell*を選択
-(also create Xibにもチェックを入れる)
-・CustomViewCell.swift
+#### セルにカラーマスクをかけるためのクラス
+
+・UIImageColorize.swift(UIColorクラスのエクステンションで、カラーフィルターを行うことができる)
 {% highlight Swift %}
 import UIKit
 
-class CustomViewCell: UITableViewCell {
+extension UIImage {
     
-    // Outlet接続の必要はない
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        // Initialization code
+    // colorize image with given tint color
+    // this is similar to Photoshop's "Color" layer blend mode
+    // this is perfect for non-greyscale source images, and images that have both highlights and shadows that should be preserved
+    // white will stay white and black will stay black as the lightness of the image is preserved
+    func tint(tintColor: UIColor) -> UIImage {
+        
+        return modifiedImage { context, rect in
+            // draw black background - workaround to preserve color of partially transparent pixels
+            context.setBlendMode(.normal)
+            UIColor.black.setFill()
+            context.fill(rect)
+            
+            // draw original image
+            context.setBlendMode(.normal)
+            context.draw(self.cgImage!, in: rect)
+            
+            // tint image (loosing alpha) - the luminosity of the original image is preserved
+            context.setBlendMode(.color)
+            tintColor.setFill()
+            context.fill(rect)
+            
+            // mask by alpha values of original image
+            context.setBlendMode(.destinationIn)
+            context.draw(self.cgImage!, in: rect)
+        }
     }
-
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-
-        // Configure the view for the selected state
+    
+    // fills the alpha channel of the source image with the given color
+    // any color information except to the alpha channel will be ignored
+    func fillAlpha(fillColor: UIColor) -> UIImage {
+        
+        return modifiedImage { context, rect in
+            // draw tint color
+            context.setBlendMode(.normal)
+            fillColor.setFill()
+            context.fill(rect)
+//            context.fillCGContextFillRect(context, rect)
+            
+            // mask by alpha values of original image
+            context.setBlendMode(.destinationIn)
+            context.draw(self.cgImage!, in: rect)
+        }
     }
-   
-    func setCell(videoItem: VideoItem){
-       
+    
+    private func modifiedImage( draw: (CGContext, CGRect) -> ()) -> UIImage {
+        
+        // using scale correctly preserves retina images
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        let context: CGContext! = UIGraphicsGetCurrentContext()
+        assert(context != nil)
+        
+        // correctly rotate image
+        context.translateBy(x: 0, y: size.height)
+        context.scaleBy(x: 1.0, y: -1.0)
+        
+        let rect = CGRect(x: 0.0, y: 0.0, width: size.width, height: size.height)
+        
+        draw(context, rect)
+        
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return image!
     }
-   
+    
 }
 {% endhighlight %}
 
-#### CustomViewCell.xibの設定
-
-swiftファイルとxibファイルを関連付けするためにストーリーボードで以下の設定を行う
-```
-・File's Owner → indntify inspecter
-Custom Classで作成した*CustomViewCell*を指定
-
-・CustomCell → Attributes inspecter
-Style → *Custom*
-identifier → *Cell* (tableView.dequeueReusableCell(withIdentifier: "Cell")で関連付け)
-```
-
-## UITableView表示用クラスの作成とカスタムセルの関連付け
-
-新規ファイル作成からUITableViewを作成
-UITableViewとカスタムセルの関連付けは以下の関数で行う
-{% highlight Swift %}
-//カスタムセルが定義されているswiftファイル名(nibName)
-var nib = UINib(nibName: "CustomViewCell", bundle: nil)
-//Attributes inspecterで指定したidentifier名
-self.tableView.register(nib, forCellReuseIdentifier: "Cell")
-{% endhighlight %}
+#### UICollectionView表示クラス
 
 ・ViewController.swift
 {% highlight Swift %}
-import UIKit
-
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
-
+extension PlaylistSearchModalView: UICollectionViewDataSource,UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     
-    //ストーリーボードからアウトレット接続
-    @IBOutlet weak var tableView: UITableView!
-   
-    //
-    var items: Array<String> = ["Doom", "Han"]
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+    //時前に用意したCellのXibファイルを関連づけする
+    //refer:https://github.com/sgr-ksmt/BeautifulGridLayout/blob/master/Demo/Demo/SamplePhotoSelectVC.swift
+    func registarCollectionCell(){
         
-        initTableView()
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
-    
-    //初期化デリゲートの登録とXibの読み込み
-    func initTableView(){
-        tableView.delegate = self
-        tableView.dataSource = self
+        collectionView.register(UINib(nibName: "GenresCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "GenresCollectionViewCell")
         
-        //作成したカスタムセルのファイル名を指定する
-        var nib = UINib(nibName: "CustomViewCell", bundle: nil)
-
-        self.tableView.register(nib, forCellReuseIdentifier: "Cell")
-    }
-    
-    //指定されたセルの内容をUITableViewCellのインスタンスとして返す
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    
-        if indexPath.section == 0 {
-            
-            //① tableView.registerと同じ引数をセットする。
-            var cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomViewCell
-            
-            //cell内のアイテムを変更する
-            var titleLabel: UILabel = cell.viewWithTag(999) as! UILabel
-            titleLabel.text = "DOOOOM"
-            
-            return cell
-        }
-    
-        return  UITableViewCell()
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        //return items.count
-        return 100
-    }
-
-
-}
-{% endhighlight %}
-
-# セルの編集・削除・入れ替え・クリック時の処理などの操作
-
-{% highlight Swift %}
-import UIKit
-
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
-
-    
-    //ストーリーボードからアウトレット接続
-    @IBOutlet weak var tableView: UITableView!
-   
-    //
-    var items: Array<String> = ["Doom", "Han"]
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
-        
-        initTableView()
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
-    
-    //初期化デリゲートの登録とXibの読み込み
-    func initTableView(){
-        tableView.delegate = self
-        tableView.dataSource = self
-        
-        //作成したカスタムセルのファイル名を指定する
-        var nib = UINib(nibName: "CustomViewCell", bundle: nil)
-
-        self.tableView.register(nib, forCellReuseIdentifier: "Cell")
-        //セルの編集を可能にする
-        self.tableView.setEditing(true, animated: true)
-        //複数選択を可能にする
-        self.tableView.allowsMultipleSelectionDuringEditing = true
-    }
-    
-    //指定されたセルの内容をUITableViewCellのインスタンスとして返す
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    
-        if indexPath.section == 0 {
-            
-            //① tableView.registerと同じ引数をセットする。
-            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomViewCell
-            
-            //cell内のアイテムを変更する
-            let titleLabel: UILabel = cell.viewWithTag(999) as! UILabel
-            titleLabel.text = "DOOOOM"
-            
-            return cell
-        }
-    
-        return  UITableViewCell()
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        //return items.count
-        return 100
-    }
-    
-
-    
-    //セルをクリックした時の処理
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        //print("selected cell \(indexPath.row)")
-        
-        
-        //プレイボタン
-        if self.tableView.indexPathsForSelectedRows?.count == 1 {
-            //self.playButton.isEnabled = true
-            
-        }else{
-            //self.playButton.isEnabled = false
-            
-        }
-        
-        //ゴミ箱
-        if self.tableView.indexPathForSelectedRow?.count == 0 {
-         //   self.deleteItemButton.isEnabled = false
-        }else{
-       //     self.deleteItemButton.isEnabled = true
-        }
-        
-        //        self.delegate?.changeMainTableViewResults(self.searchFilter!.getResults() as! NSMutableArray)
-        //        self.delegate?.selectedFromSearchFilter(filterResults[indexPath.row])
+        //ViewControllerをUICollectionViewDataSourceのサブクラスとする設定は、extensionに記述
+        collectionView.dataSource = self
+        collectionView.delegate = self
         
     }
-    
-    //セルのクリックを解除した時の処理
-    func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath){
-        //プレイボタン
-        if self.tableView.indexPathsForSelectedRows?.count == 1 {
-          //  self.playButton.isEnabled = true
-            
-        }else{
-            //self.playButton.isEnabled = false
-            
-        }
-    }
-    
 
-
-    /*
-     セルの移動設定
-     */
-    
-    
-    //移動できるようにする
-    //このメソッドをオーバライドしないと、並び替えできない(右端に並び替えアイコンが出ない)
-    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool{
-        return true
-    }
-    //並び替え実行後の処理
-    //このメソッドをオーバライドしないと、並び替えできない
-    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath){
-        
-        // #201703191011 並び替え修正(更新がうまくいかない箇所を修正)
-       // PlaylistHelper.sharedInstance.moveCell(moveRowAt: sourceIndexPath, to: destinationIndexPath)
-        
-        //TableViewを1度リセットして再読み込み
-        //self.searchFilter?.reloadData()
-        //self.filterResults.removeAll()
-        //self.filterResults = self.searchFilter!.getResults()
-        //self.self.tableView.reloadData()
-        
+    //マージン調整
+    //http://stackoverflow.com/questions/28325277/how-to-set-cell-spacing-and-uicollectionview-uicollectionviewflowlayout-size-r
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let itemsPerRow:CGFloat = 2
+        let hardCodedPadding:CGFloat = 5
+        let itemWidth = (collectionView.bounds.width / itemsPerRow) - hardCodedPadding
+        let itemHeight = collectionView.bounds.height/(itemsPerRow * 2)
+        return CGSize(width: itemWidth, height: itemHeight)
     }
     
     
     /*
-     左端のボタン設定(self.tableView.allowsMultipleSelectionDuringEditing = true)
+     * UICollectionViewDataSource
      */
-    
-    //falseにすると編集(削除ボタン)が表示されなくなる
-    //注意：この関数をオーバーライドすると、複数選択(青色のチェックボックス)ができなくなる
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool{
+    //cellの個数を返す(必須)
+    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return searchResults.count
+    }
+
+    //cellの中身を作成する(必須)。APIで非同期に画像やStringを取得するには、この内部で行う
+    //param: indexPath -> 要素を表す
+    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
-        return false
-    }
+        //Xibで定義したCellと関連づけする
+        //dequeueReusableCell → UICollectionView ではあらかじめセルのクラスを登録しておくことで、再利用可能なセルがない場合に新しく作成したものを返してくれるようになっている
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "GenresCollectionViewCell", for: indexPath) as! GenresCollectionViewCell
+        let cellImageView: UIImageView = cell.viewWithTag(301) as! UIImageView
 
-    //左端にボタン(マイナスボタンやプラスボタン)を表示している時に、インデントを挿入するかどうか
-    func tableView(_ tableView: UITableView, shouldIndentWhileEditingRowAt indexPath: IndexPath) -> Bool{
-        return false
-    }
+        let thumbnailUrl: String? = self.searchResults[indexPath.row].thumbnailUrl
 
-    //以下のの関数で、左端に赤いマイナスボタンもしくは緑色のプラスボタン表示
-    //http://stackoverflow.com/questions/3020922/is-there-any-way-to-hide-delete-button-while-editing-uitableview
-    func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCellEditingStyle{
-        //return .insert //プラスボタン
-        return .delete //デリートボタン
-        //return .none//何も表示しない
-    }
-
-    // 編集ボタンのカスタマイズButtonを拡張する.
-    func tableView(_ tableView: UITableView, editActionsForRowAt: IndexPath) -> [UITableViewRowAction]? {
-        
-        //並び替えボタン21C5
-        let arrowButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{21C5}") { (action, index) -> Void in
-            
-            tableView.isEditing = true
-            print("share")
-            
+        let url: URL? = URL(string: thumbnailUrl!)
+        if url != nil {
+            cellImageView.af_setImage(withURL: url!)
+        }else{
+          //画像が取得できなかった時の処理
+          cellImageView.image = UIImage(named: "ic_music_file")
         }
-        arrowButton.backgroundColor = UIColor.brown
         
-        // heartボタン.
-        let heartButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{2665}") { (action, index) -> Void in
-            
-            tableView.isEditing = false
-            print("share")
-            
+        //TableViewのcellをxibファイルで作成した時は、viewWithTagでセルに含まれるアイテムを取得する
+       // let titleLabel: UITextField = cell.viewWithTag(302) as! UITextField
+        let titleLabel: UILabel = cell.viewWithTag(302) as! UILabel
+        titleLabel.text = self.searchResults[indexPath.row].title
+        if (cell.isSelected) {
         }
-        heartButton.backgroundColor = UIColor.blue
-        
-        //U+25B6
-        // Archiveボタン.
-        let playButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{25B6}") { (action, index) -> Void in
-            
-            tableView.isEditing = false
-            print("archive")
-            
+        else
+        {
+            ///選択れていない時は色を戻す
+            cellImageView.image? = (cellImageView.image?.tint(tintColor: UIColor.clear))!
+            cell.backgroundColor = deselectedColor
         }
-        playButton.backgroundColor = UIColor.green
-        
-        // Deleteボタン.
-        let myDeleteButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{2A2F}") { (action, index) -> Void in
-            
-            tableView.isEditing = false
-            print("delete")
-            
-        }
-        myDeleteButton.backgroundColor = UIColor.red
-        //注意:左から順に登録されるらしい
-        return [myDeleteButton, heartButton, playButton]
-        
+        return cell
     }
 
-}
-{% endhighlight %}
-# UISearchBarと組み合わせて、cellをフィルタリングする
+    /*
+     * UICollectionViewDelegate
+     */
+    //cellを選択した時に呼ばれる
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        
+        let cell = collectionView.cellForItem(at: indexPath)
+        if self.collectionView.cellForItem(at: indexPath) == nil {
+            return
+        }
+        
+        let selectedCell = self.collectionView.cellForItem(at: indexPath)!
+        
+        if  selectedCell.isSelected != false{
+            
+            let cellImageView: UIImageView = cell!.viewWithTag(301) as! UIImageView
+            //画像のMaskを変える
+            cellImageView.image? = (cellImageView.image?.tint(tintColor: selectedColor))!
+            //背景を変える
+            cell?.backgroundColor = selectedColor
+        }
+        
+        self.selectedPlaylist = self.searchResults[indexPath.row]
 
-## フィルタリング処理用クラスの作成
-
-・ArrayFilter.swift(extendとして作成するのも可)
-{% highlight Swift %}
-import Foundation
-
-class ArrayFilter {
-
-    static func filterPartialMatchQuery(array: Array<AnyObject>, word: String) -> Array<AnyObject>{
-        //1. searchQueryの検索条件を保持するオブジェクト
-        let searchQuery = "name CONTAINS[c] %@"
-    
-        let pred:NSPredicate = NSPredicate(format: searchQuery, word)
-    
-        //searchQuery条件にマッチする配列をフィルタリング
-        let result: Array<AnyObject>? = (array as NSArray).filtered(using: pred) as? Array<AnyObject>
-    
-        return result!
     }
- 
-    static func filterOrderByAscending(array: Array<AnyObject>, sortKey: String) -> Array<AnyObject>{
+    
+    //cell選択解除した時に、カラーマスクを元に戻す
+    func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath){
+        //let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PlaylistCollectionViewCell", for: indexPath) as! PlaylistCollectionViewCell
+         let cell = collectionView.cellForItem(at: indexPath)
+        let deselectedCell = self.collectionView.cellForItem(at: indexPath) as? PlaylistCollectionViewCell
+        
+        if deselectedCell != nil {
+            let cellImageView: UIImageView = cell!.viewWithTag(301) as! UIImageView
+            //画像のMaskを変える
+            cellImageView.image? = (cellImageView.image?.tint(tintColor: deselectedColor))!
+            //背景を変える
+            cell?.backgroundColor = deselectedColor
+           // print("didSelectItemAt2")
+        }
+        
+        self.collectionView.reloadData()
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
+        _ = collectionView.dequeueReusableCell(withReuseIdentifier: "GenresCollectionViewCell", for: indexPath) as! GenresCollectionViewCell
        
-            // http://chris.eidhof.nl/post/sort-descriptors-in-swift/
-            //並び替えの基準となる変数をkey, 上昇なら ascending: true
-            // let ageDiscriptor = NSSortDescriptor(key: "age", ascending: false)
-            let nameDiscriptor = NSSortDescriptor(key: sortKey, ascending: true)
-        
-            let result = (array as NSArray).sortedArray(using: [nameDiscriptor])
-            
-            return result as Array<AnyObject>
+      //  print("shouldSelectItemAt")
+        return  true
     }
     
-    static func filterOrderByDescending(array: Array<AnyObject>, sortKey: String) -> Array<AnyObject>{
-        
-        // http://chris.eidhof.nl/post/sort-descriptors-in-swift/
-        //並び替えの基準となる変数をkey, 上昇なら ascending: true
-        // let ageDiscriptor = NSSortDescriptor(key: "age", ascending: false)
-        let nameDiscriptor = NSSortDescriptor(key: sortKey, ascending: false)
-        
-        let result = (array as NSArray).sortedArray(using: [nameDiscriptor])
-        
-        return result as Array<AnyObject>
-    }
-    
-    //複数キーワード(スペース区切り)
-    static func filterMultipleWords(array: Array<AnyObject>, words: String) -> Array<AnyObject>{
-        
-        //曖昧条件
-        let query = "name CONTAINS[c] %@"
-        
-        //空白ごとに配列の要素を追加する
-        var stringArray = words.components(separatedBy: NSCharacterSet.whitespaces)
-        print("stringArray = %@",stringArray.count)
-        
-        var predicate:Array<NSPredicate> = []
-        
-        for i in 0..<stringArray.count{
-            print(stringArray[i])
-            let item = NSPredicate(format: query, stringArray[i])
-            predicate.append(item)
-        }
-
-        //OR条件
-        let compoundedPredicate = NSCompoundPredicate(orPredicateWithSubpredicates: predicate)
-        
-        //searchQuery条件にマッチする配列をフィルタリング
-        let result: Array<AnyObject>? = (array as NSArray).filtered(using: compoundedPredicate) as? Array<AnyObject>
-
-        return result!
-
-    }
-}
-{% endhighlight %}
-
-・ViewController.swift
-{% highlight Swift %}
-import UIKit
-import Foundation
-
-class ViewController: UIViewController,UITableViewDelegate, UITableViewDataSource,UISearchBarDelegate {
-    
-    //サンプル:@IBOutlet weak var tableView: UITableView!
-    @IBOutlet weak var tableView: UITableView!
-    @IBOutlet weak var searchBar: UISearchBar!
-
-    //サンプルアイテムのコレクション
-    
-    //フィルタリング処理後の配列。これをTableViewと連携させ、実際に表示させる。
-    var searchResult: Array<AnyObject>  = []
-    //元の配列(これ自体は変更しない)
-    var nekoSampleArray: Array<AnyObject> = []
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
-        
-        //self.nekoSampleArray = [neko0, neko1, neko2, neko3, neko4, neko5, neko6, neko7, neko8, neko9, neko10, neko11, neko12, neko13, neko14, neko15, neko16]
-        for i in 0..<commandoSample.count{
-            self.nekoSampleArray.append(Neko(name: commandoSample[i], age: i))
-        }
-        
-        searchResult = nekoSampleArray
-        
-        initSearchController()
-        initTableView()
-    }
-    
-    //デリゲートの登録とXibの読み込み
-    func initTableView(){
-        tableView.delegate = self
-        tableView.dataSource = self
-        var nib = UINib(nibName: "CustomViewCell", bundle: nil)
-        
-        //① tableView.dequeueReusableCell(withIdentifier: )と引数が対応関係にある。
-        self.tableView.register(nib, forCellReuseIdentifier: "Cell")
-    }
-
-    
-    func initSearchController(){
-        
-        //結果表示用のビューコントローラーに自分を設定する。
-        searchBar.delegate = self
-        //空白でも検査ボタンが押せる
-        searchBar.enablesReturnKeyAutomatically = false
-        searchBar.setShowsCancelButton(true, animated: true)
-        
-    }
-    
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
-    
-    //指定されたセルの内容をUITableViewCellのインスタンスとして返す
-    //cellForRowAtは外部引数(詳解Swift p40)
-    //アンダースコアは内部引数の省略(詳解Swift p41-42)
-    //TableViewについては、iOSアプリ開発p335を参照
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        if indexPath.section == 0 {
-            
-            //① tableView.registerと同じ引数をセットする。
-            var cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomViewCell
-            
-            //cell内のアイテムを変更する
-            var titleLabel: UILabel = cell.viewWithTag(100) as! UILabel
-            
-            
-            // Array<Item>の場合
-            //titleLabel.text = sampleArray[indexPath.row].title
-            print("tableView")
-            titleLabel.text = (self.searchResult[indexPath.row] as! Neko).name
-            
-            return cell
-        }
-        
-        return  UITableViewCell()
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        //return items.count
-        //return commandoSample.count-1
-        return searchResult.count
-    }
-    
-    /*
-     テキストが入力されるたびに呼ばれる(確定する前)
-    */
-    func searchBar(_ searchBar: UISearchBar, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        
-        print(searchBar.text!)
-        // 確定前の文字入力を検知します
-        // return trueして文字入力が確定した後にsearchBarの文字を取得する処理を遅延実行します
-        print("Before")
-        
-        /*遅滞処理の中でフィルタリング・更新処理を行わないと、
-        タイミングが早すぎて確定前のsearch.textが取得できない*/
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1){
-            print("Dispatche?")
-            if(searchBar.text == ""){
-                
-                print("not text")
-                self.searchResult = self.nekoSampleArray
-                
-            }else if(searchBar.text?.contains(" "))!{
-                
-                print(" Multi words")
-                self.searchResult = ArrayFilter.filterMultipleWords(array: self.nekoSampleArray, words: searchBar.text!)
-
-            }else{
-                
-                self.searchResult = ArrayFilter.filterPartialMatchQuery(array: self.nekoSampleArray, word: searchBar.text!)
-            }
-            self.tableView.reloadData()
-        }//DispatchQueu.main.asyncAfter
-        return true
-    }
-    
-    /*
-     Searchボタンが押された時に呼ばれる
-     */
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        self.view.endEditing(true)
-        print("SearchButton")
-    }
-    
-    /*
-     テキストが確定毎に呼ばれる
-     */
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        print("Daemon")
-        //self.tableView.reloadData()
-    }
-    
-    /*
-     Cancelボタンが押された時に呼ばれる
-     */
-    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-        print()
-        self.searchResult = ArrayFilter.filterOrderByDescending(array: nekoSampleArray, sortKey: "name")
-        self.tableView.reloadData()
-
+    func collectionView(_ collectionView: UICollectionView, shouldDeselectItemAt indexPath: IndexPath) -> Bool {
+      //  print("shouldDeselectItemAt")
+        return false
     }
 }
 {% endhighlight %}
