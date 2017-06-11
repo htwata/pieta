@@ -3,7 +3,7 @@ layout: post
 title:  "UITableViewの備忘録(Custom Cell, filtering)"
 date:   2017-05-10 20:01:14 +0900
 tags: ios swift xcode uikit uitableview
-permalink: /ios/swift/xcode/uikit/uitableview/default
+permalink: /ios/swift/xcode/uikit/uitableview
 
 ---
 ```
@@ -135,11 +135,213 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 }
 {% endhighlight %}
 
+# セルの編集・削除・入れ替え・クリック時の処理などの操作
+
+{% highlight Swift %}
+import UIKit
+
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+
+    
+    //ストーリーボードからアウトレット接続
+    @IBOutlet weak var tableView: UITableView!
+   
+    //
+    var items: Array<String> = ["Doom", "Han"]
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view, typically from a nib.
+        
+        initTableView()
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+    
+    //初期化デリゲートの登録とXibの読み込み
+    func initTableView(){
+        tableView.delegate = self
+        tableView.dataSource = self
+        
+        //作成したカスタムセルのファイル名を指定する
+        var nib = UINib(nibName: "CustomViewCell", bundle: nil)
+
+        self.tableView.register(nib, forCellReuseIdentifier: "Cell")
+        //セルの編集を可能にする
+        self.tableView.setEditing(true, animated: true)
+        //複数選択を可能にする
+        self.tableView.allowsMultipleSelectionDuringEditing = true
+    }
+    
+    //指定されたセルの内容をUITableViewCellのインスタンスとして返す
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    
+        if indexPath.section == 0 {
+            
+            //① tableView.registerと同じ引数をセットする。
+            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomViewCell
+            
+            //cell内のアイテムを変更する
+            let titleLabel: UILabel = cell.viewWithTag(999) as! UILabel
+            titleLabel.text = "DOOOOM"
+            
+            return cell
+        }
+    
+        return  UITableViewCell()
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        //return items.count
+        return 100
+    }
+    
+
+    
+    //セルをクリックした時の処理
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        //print("selected cell \(indexPath.row)")
+        
+        
+        //プレイボタン
+        if self.tableView.indexPathsForSelectedRows?.count == 1 {
+            //self.playButton.isEnabled = true
+            
+        }else{
+            //self.playButton.isEnabled = false
+            
+        }
+        
+        //ゴミ箱
+        if self.tableView.indexPathForSelectedRow?.count == 0 {
+         //   self.deleteItemButton.isEnabled = false
+        }else{
+       //     self.deleteItemButton.isEnabled = true
+        }
+        
+        //        self.delegate?.changeMainTableViewResults(self.searchFilter!.getResults() as! NSMutableArray)
+        //        self.delegate?.selectedFromSearchFilter(filterResults[indexPath.row])
+        
+    }
+    
+    //セルのクリックを解除した時の処理
+    func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath){
+        //プレイボタン
+        if self.tableView.indexPathsForSelectedRows?.count == 1 {
+          //  self.playButton.isEnabled = true
+            
+        }else{
+            //self.playButton.isEnabled = false
+            
+        }
+    }
+    
+
+
+    /*
+     セルの移動設定
+     */
+    
+    
+    //移動できるようにする
+    //このメソッドをオーバライドしないと、並び替えできない(右端に並び替えアイコンが出ない)
+    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool{
+        return true
+    }
+    //並び替え実行後の処理
+    //このメソッドをオーバライドしないと、並び替えできない
+    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath){
+        
+        // #201703191011 並び替え修正(更新がうまくいかない箇所を修正)
+       // PlaylistHelper.sharedInstance.moveCell(moveRowAt: sourceIndexPath, to: destinationIndexPath)
+        
+        //TableViewを1度リセットして再読み込み
+        //self.searchFilter?.reloadData()
+        //self.filterResults.removeAll()
+        //self.filterResults = self.searchFilter!.getResults()
+        //self.self.tableView.reloadData()
+        
+    }
+    
+    
+    /*
+     左端のボタン設定(self.tableView.allowsMultipleSelectionDuringEditing = true)
+     */
+    
+    //falseにすると編集(削除ボタン)が表示されなくなる
+    //注意：この関数をオーバーライドすると、複数選択(青色のチェックボックス)ができなくなる
+    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool{
+        
+        return false
+    }
+
+    //左端にボタン(マイナスボタンやプラスボタン)を表示している時に、インデントを挿入するかどうか
+    func tableView(_ tableView: UITableView, shouldIndentWhileEditingRowAt indexPath: IndexPath) -> Bool{
+        return false
+    }
+
+    //以下のの関数で、左端に赤いマイナスボタンもしくは緑色のプラスボタン表示
+    //http://stackoverflow.com/questions/3020922/is-there-any-way-to-hide-delete-button-while-editing-uitableview
+    func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCellEditingStyle{
+        //return .insert //プラスボタン
+        return .delete //デリートボタン
+        //return .none//何も表示しない
+    }
+
+    // 編集ボタンのカスタマイズButtonを拡張する.
+    func tableView(_ tableView: UITableView, editActionsForRowAt: IndexPath) -> [UITableViewRowAction]? {
+        
+        //並び替えボタン21C5
+        let arrowButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{21C5}") { (action, index) -> Void in
+            
+            tableView.isEditing = true
+            print("share")
+            
+        }
+        arrowButton.backgroundColor = UIColor.brown
+        
+        // heartボタン.
+        let heartButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{2665}") { (action, index) -> Void in
+            
+            tableView.isEditing = false
+            print("share")
+            
+        }
+        heartButton.backgroundColor = UIColor.blue
+        
+        //U+25B6
+        // Archiveボタン.
+        let playButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{25B6}") { (action, index) -> Void in
+            
+            tableView.isEditing = false
+            print("archive")
+            
+        }
+        playButton.backgroundColor = UIColor.green
+        
+        // Deleteボタン.
+        let myDeleteButton: UITableViewRowAction = UITableViewRowAction(style: .normal, title: "\u{2A2F}") { (action, index) -> Void in
+            
+            tableView.isEditing = false
+            print("delete")
+            
+        }
+        myDeleteButton.backgroundColor = UIColor.red
+        //注意:左から順に登録されるらしい
+        return [myDeleteButton, heartButton, playButton]
+        
+    }
+
+}
+{% endhighlight %}
 # UISearchBarと組み合わせて、cellをフィルタリングする
 
 ## フィルタリング処理用クラスの作成
 
-・AratFilter.swift(extendとして作成するのも可)
+・ArrayFilter.swift(extendとして作成するのも可)
 {% highlight Swift %}
 import Foundation
 
@@ -211,6 +413,7 @@ class ArrayFilter {
 }
 {% endhighlight %}
 
+・ViewController.swift
 {% highlight Swift %}
 import UIKit
 import Foundation
@@ -360,7 +563,4 @@ class ViewController: UIViewController,UITableViewDelegate, UITableViewDataSourc
 
     }
 }
-{% endhighlight %}
-
-{% highlight Swift %}
 {% endhighlight %}
