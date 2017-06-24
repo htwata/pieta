@@ -19,11 +19,11 @@ Electronの実行環境であるNode.jsは、
 バージョン管理するパッケージマネジャーが何種類か存在する
 ex. nvm, n package, nodebrew
 
-[参考サイト]: http://bam6o0.hatenablog.com/entry/2017/05/05/050927
+http://bam6o0.hatenablog.com/entry/2017/05/05/050927
 
 #### nodebrewのインストール
 
-[本家]: https://github.com/hokaccha/nodebrew
+https://github.com/hokaccha/nodebrew
 
 ・URLを参考に、nodebrewのインストールとPATHの設定を行う
 {% highlight bash %}
