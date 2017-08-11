@@ -121,13 +121,13 @@ module.exports = {
 
 
 ・.babelrc
-```
+{% highlight javascript %}
 {
   "presets": [
     "es2015", "react"
   ]
 }
-
+{% endhighlight %}
 
 #### ひな型ファイルの作成
 以下のファイルを作る
