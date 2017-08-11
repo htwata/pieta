@@ -117,7 +117,9 @@ module.exports = {
   },
   devtool: "source-map"
 };
-```
+{% endhighlight %}
+
+
 ・.babelrc
 ```
 {
@@ -125,7 +127,7 @@ module.exports = {
     "es2015", "react"
   ]
 }
-{% endhighlight %}
+
 
 #### ひな型ファイルの作成
 以下のファイルを作る
@@ -165,7 +167,7 @@ module.exports = {
 ```
 
 ・src/main/index.js
-```
+{% highlight javascript %}
 const electron = require('electron')
 // Module to control application life.
 const app = electron.app
@@ -224,7 +226,7 @@ app.on('activate', function () {
     createWindow()
   }
 })
-```
+{% endhighlight %}
 
 ・src/renderer/app.js
 ```
