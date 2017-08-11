@@ -41,7 +41,7 @@ $ npm install react react-dom react-router --save
 $ npm installでdependencies,devDependenciesに書かれているモジュールを一括でインストールできる
 ```
 "main"には、トランスパイル後のディレクトリ(dist/main/index.js)を指定する
-{% highlight JSON %}
+{% highlight javascript %}
 {
   "name": "Template",
   "version": "1.0.0",
@@ -72,6 +72,11 @@ $ npm installでdependencies,devDependenciesに書かれているモジュール
     "photon": "github:connors/photon",
     "react": "^15.6.1",
     "react-dom": "^15.6.1"
+  },
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "start": "electron ."
   }
 }
 {% endhighlight %}
@@ -79,7 +84,7 @@ $ npm installでdependencies,devDependenciesに書かれているモジュール
 
 #### Webpack・.babelrcの設定
 ・webpack.config.js
-```
+{% highlight javascript %}
 
 module.exports = {
   target: "electron",
@@ -120,8 +125,8 @@ module.exports = {
     "es2015", "react"
   ]
 }
+{% endhighlight %}
 
-```
 #### ひな型ファイルの作成
 以下のファイルを作る
 ・index.html
@@ -229,7 +234,7 @@ import { render } from "react-dom";
 render(<div>Hello, Mario = DAN</div>, document.getElementById("app"));
 ```
 
-{% highlight js %}
+{% highlight javascript %}
 
 {% endhighlight %}
 
